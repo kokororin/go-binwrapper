@@ -7,7 +7,9 @@ Inspired by and partially ported from npm package [bin-wrapper](https://github.c
 
 ## Install
 
-```go get -u github.com/kokororin/go-binwrapper```
+```bash
+go get -u github.com/kokororin/go-binwrapper
+```
 
 ## Example of usage
 
@@ -16,17 +18,17 @@ See complete examples in [`binwrapper_test.go`](binwrapper_test.go):
 
 **Important note**: Many vendors don't provide binaries for some specific platforms. For instance, common linux binaries won't work on alpine linux or arm-based linux. In that case you need to have prebuilt binaries on target platform and use SkipDownload. The example above will look like:
 
-```
+```go
 bin = binwrapper.NewBinWrapper().
-		SkipDownload().
-		ExecPath("cwebp")
+    SkipDownload().
+    ExecPath("cwebp")
 ```
 
 Now binwrapper will run *cwebp* located in **PATH**
 
 Use Dest to specify directory with binary:
 
-```
+```go
 bin = binwrapper.NewBinWrapper().
     SkipDownload().
     Dest("/path/to/directory").
