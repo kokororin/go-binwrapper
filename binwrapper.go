@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -31,11 +30,12 @@ type Src struct {
 
 // BinWrapper wraps executable and provides convenient methods to interact with
 type BinWrapper struct {
-	src      []*Src
-	dest     string
-	execPath string
-	strip    int
-	autoExe  bool
+	src         []*Src
+	dest        string
+	execPath    string
+	strip       int
+	skipExtract bool
+	autoExe     bool
 
 	stdErr       []byte
 	stdOut       []byte
@@ -125,6 +125,12 @@ func (b *BinWrapper) AutoExe() *BinWrapper {
 // SkipDownload skips downloading a file
 func (b *BinWrapper) SkipDownload() *BinWrapper {
 	b.src = nil
+	return b
+}
+
+// SkipExtract skips extracting a file
+func (b *BinWrapper) SkipExtract() *BinWrapper {
+	b.skipExtract = true
 	return b
 }
 
@@ -273,10 +279,10 @@ func (b *BinWrapper) Run(arg ...string) error {
 	}
 
 	if stdout != nil {
-		b.stdOut, _ = ioutil.ReadAll(stdout)
+		b.stdOut, _ = io.ReadAll(stdout)
 	}
 
-	b.stdErr, _ = ioutil.ReadAll(stderr)
+	b.stdErr, _ = io.ReadAll(stderr)
 	err = b.cmd.Wait()
 
 	if ctx.Err() == context.DeadlineExceeded {
@@ -321,16 +327,34 @@ func (b *BinWrapper) download() error {
 		return err
 	}
 
-	fmt.Printf("%s downloaded. Trying to extract...\n", file)
+	if b.skipExtract {
+		// Move the downloaded file to the target executable path
+		targetPath := b.Path()
+		err = os.Rename(file, targetPath)
+		if err != nil {
+			os.Remove(file) // Clean up on error
+			return err
+		}
 
-	err = b.extractFile(file)
+		// Set executable permissions
+		err = os.Chmod(targetPath, 0755)
+		if err != nil {
+			return err
+		}
 
-	if err != nil {
-		return err
-	}
+		fmt.Printf("Executable ready at %s\n", targetPath)
+	} else {
+		fmt.Printf("%s downloaded. Trying to extract...\n", file)
 
-	if src.execPath != "" {
-		b.ExecPath(src.execPath)
+		err = b.extractFile(file)
+
+		if err != nil {
+			return err
+		}
+
+		if src.execPath != "" {
+			b.ExecPath(src.execPath)
+		}
 	}
 
 	return nil
@@ -368,7 +392,7 @@ func (b *BinWrapper) stripDir() error {
 	var dirsToRemove []string
 
 	for i := 0; i < b.strip; i++ {
-		files, err := ioutil.ReadDir(dir)
+		files, err := os.ReadDir(dir)
 
 		if err != nil {
 			return err
@@ -387,7 +411,7 @@ func (b *BinWrapper) stripDir() error {
 		}
 	}
 
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 
 	if err != nil {
 		return err

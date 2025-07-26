@@ -93,3 +93,42 @@ func TestNewBinWrapperError(t *testing.T) {
 	err := bin.Run("-version")
 	assert.NotNil(t, err)
 }
+
+func TestNewBinWrapperNoExtract(t *testing.T) {
+	base := "https://repo1.maven.org/maven2/com/google/protobuf/protoc/4.31.1/"
+
+	bin := binwrapper.NewBinWrapper().
+		Src(
+			binwrapper.NewSrc().
+				URL(base + "protoc-4.31.1-osx-x86_64.exe").
+				Os("darwin")).
+		Src(
+			binwrapper.NewSrc().
+				URL(base + "protoc-4.31.1-linux-x86_32.exe").
+				Os("linux").
+				Arch("x86")).
+		Src(
+			binwrapper.NewSrc().
+				URL(base + "protoc-4.31.1-linux-x86_64.exe").
+				Os("linux").
+				Arch("x64")).
+		Src(
+			binwrapper.NewSrc().
+				URL(base + "protoc-4.31.1-windows-x86_64.exe").
+				Os("win32").
+				Arch("x64")).
+		Src(
+			binwrapper.NewSrc().
+				URL(base + "protoc-4.31.1-windows-x86_32.exe").
+				Os("win32").
+				Arch("x86")).
+		SkipExtract().
+		Dest("bin/protoc").
+		ExecPath("protoc").AutoExe()
+
+	err := bin.Run("--version")
+
+	fmt.Printf("stdout: %s\n", string(bin.StdOut()))
+	fmt.Printf("stderr: %s\n", string(bin.StdErr()))
+	fmt.Printf("err: %v\n", err)
+}
